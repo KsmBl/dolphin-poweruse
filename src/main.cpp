@@ -138,6 +138,8 @@ int main(int argc, char **argv)
                                               "The files and folders passed as arguments "
                                               "will be selected.")));
     parser.addOption(QCommandLineOption(QStringList() << QStringLiteral("split"), i18nc("@info:shell", "Dolphin will get started with a split view.")));
+    parser.addOption(QCommandLineOption(QStringList() << QStringLiteral("drives"),
+                                        i18nc("@info:shell", "Dolphin will open a tab listing the connected drives and containers.")));
     parser.addOption(QCommandLineOption(QStringList() << QStringLiteral("new-window"), i18nc("@info:shell", "Dolphin will explicitly open in a new window.")));
     parser.addOption(QCommandLineOption(QStringList() << QStringLiteral("sudo") << QStringLiteral("admin"),
                                         i18nc("@info:shell", "Set up Dolphin for administrative tasks.")));
@@ -159,6 +161,10 @@ int main(int argc, char **argv)
     const bool adminWorkerInfoWanted = parser.isSet(QStringLiteral("sudo")) || parser.isSet(QStringLiteral("admin"));
     const QStringList args = parser.positionalArguments();
     QList<QUrl> urls = Dolphin::validateUris(args);
+    if (parser.isSet(QStringLiteral("drives"))) {
+        // Ends up as an ordinary tab, so it can be split, bookmarked and so on.
+        urls.append(QUrl(QStringLiteral("drives:/")));
+    }
     // We later mutate urls, so we need to store if it was empty originally
     const bool startedWithURLs = !urls.isEmpty();
 

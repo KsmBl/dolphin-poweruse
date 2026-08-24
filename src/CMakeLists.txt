@@ -293,6 +293,8 @@ target_sources(dolphinstatic PRIVATE
     dolphindockwidget.cpp
     dolphinmainwindow.cpp
     dolphinviewcontainer.cpp
+    drives/drivesmodel.cpp
+    drives/drivesview.cpp
     dolphincontextmenu.cpp
     dolphinnavigatorswidgetaction.cpp
     dolphintabbar.cpp
@@ -683,3 +685,6 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(itemactions)
+
+# drives:/ - one folder per connected drive, volume or container
+add_subdirectory(kioworkers/drives)

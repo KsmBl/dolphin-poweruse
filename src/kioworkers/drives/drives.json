@@ -1,0 +1,26 @@
+{
+    "KDE-KIO-Protocols": {
+        "drives": {
+            "Class": ":local",
+            "Icon": "drive-harddisk",
+            "deleting": false,
+            "determineMimetypeFromExtension": false,
+            "input": "none",
+            "linking": false,
+            "listing": [
+                "Name",
+                "Type",
+                "Icon",
+                "URL"
+            ],
+            "makedir": false,
+            "maxInstances": 2,
+            "moving": false,
+            "output": "filesystem",
+            "protocol": "drives",
+            "reading": false,
+            "source": false,
+            "writing": false
+        }
+    }
+}

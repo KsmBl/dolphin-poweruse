@@ -43,9 +43,36 @@ Command=konsole --workdir %f
 ```
 
 Touched upstream files: `src/dolphincontextmenu.{h,cpp}` (the entries),
-`src/settings/dolphinsettingsdialog.cpp` (the page) and `src/CMakeLists.txt`.
+`src/settings/dolphinsettingsdialog.cpp` (the page), `src/main.cpp` (the
+`--drives` option) and `src/CMakeLists.txt`.
 Everything else lives in `src/customactions.{h,cpp}` and
 `src/settings/customactions/`, which keeps rebasing onto a new Dolphin cheap.
+
+### A tab listing the connected drives
+
+`drives:/` is a folder holding one entry per drive, partition, removable disk
+and container Solid knows about — including LUKS and LVM volumes. Clicking an
+entry jumps to that device's mount point; a device that is not mounted yet gets
+mounted first, and an encrypted container asks for its passphrase at that
+moment. Entries that are not mounted say so in their name.
+
+The list is drawn as wide rows rather than icons: a same-sized icon on the
+left, the device node above its mount point next to it, and a bar underneath
+showing how full that partition or container is, with the used and total size
+spelled out. Devices that are not mounted say so and have no bar.
+
+Because it is an ordinary URL, the list is an ordinary tab: it can be split,
+bookmarked, opened in a new window, or typed into the location bar.
+
+```sh
+dolphin --drives      # opens the list in a tab
+dolphin drives:/      # the same thing
+```
+
+The listing itself is a KIO worker in `src/kioworkers/drives/`, installed
+alongside Dolphin as `kf6/kio/kio_drives.so`, so the protocol is available to
+every KDE application. The row drawing lives in `src/drives/`, which the view
+container swaps in while a `drives:/` URL is shown.
 
 ## Use it
 

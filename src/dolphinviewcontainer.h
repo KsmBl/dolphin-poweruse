@@ -27,6 +27,7 @@ namespace Admin
 {
 class Bar;
 }
+class DrivesView;
 class FilterBar;
 class QAction;
 class QGridLayout;
@@ -240,6 +241,9 @@ public Q_SLOTS:
      * @see DolphinViewContainer::urlNavigator()
      */
     void setUrl(const QUrl &url);
+
+    /** Shows the drives list instead of the ordinary view for drives:/ URLs. */
+    void updateDrivesView(const QUrl &url);
 
     /**
      * Popups the filter bar above the status bar if \a visible is true.
@@ -513,6 +517,7 @@ private:
     SelectionMode::TopBar *m_selectionModeTopBar;
 
     DolphinView *m_view;
+    DrivesView *m_drivesView;
 
     FilterBar *m_filterBar;
 

@@ -6,6 +6,8 @@
 
 #include "dolphinviewcontainer.h"
 
+#include "drives/drivesview.h"
+
 #include "admin/bar.h"
 #include "admin/workerintegration.h"
 #include "dolphin_compactmodesettings.h"
@@ -176,8 +178,21 @@ DolphinViewContainer::DolphinViewContainer(const QUrl &url, QWidget *parent)
     KIO::FileUndoManager *undoManager = KIO::FileUndoManager::self();
     connect(undoManager, &KIO::FileUndoManager::jobRecordingFinished, this, &DolphinViewContainer::delayedStatusBarUpdate);
 
+    // The drives list lives in the same cell as the ordinary view and takes
+    // its place while a drives:/ URL is shown.
+    m_drivesView = new DrivesView(this);
+    m_drivesView->hide();
+    connect(m_drivesView, &DrivesView::driveActivated, this, [this](const QUrl &url) {
+        setUrl(url);
+    });
+    // The navigator is not the only way the URL changes - the initial one and
+    // history navigation arrive through the view itself.
+    connect(m_view, &DolphinView::urlChanged, this, &DolphinViewContainer::updateDrivesView);
+    updateDrivesView(url);
+
     m_topLayout->addWidget(m_messageWidget, positionFor.messageWidget, 0);
     m_topLayout->addWidget(m_view, positionFor.view, 0);
+    m_topLayout->addWidget(m_drivesView, positionFor.view, 0);
     m_topLayout->addWidget(m_filterBar, positionFor.filterBar, 0);
     if (GeneralSettings::showStatusBar() == GeneralSettings::EnumShowStatusBar::FullWidth) {
         m_topLayout->addWidget(m_statusBar, positionFor.statusBar, 0);
@@ -634,6 +649,19 @@ void DolphinViewContainer::setUrl(const QUrl &newUrl)
     }
 }
 
+void DolphinViewContainer::updateDrivesView(const QUrl &url)
+{
+    // Only the listing itself gets the custom view; entering a drive leads to
+    // its mount point, which is an ordinary folder again.
+    const bool showDrives = url.scheme() == QLatin1String("drives") && url.path().count(QLatin1Char('/')) <= 1;
+
+    if (showDrives) {
+        m_drivesView->refresh();
+    }
+    m_drivesView->setVisible(showDrives);
+    m_view->setVisible(!showDrives);
+}
+
 void DolphinViewContainer::setFilterBarVisible(bool visible)
 {
     Q_ASSERT(m_filterBar);
@@ -899,6 +927,7 @@ void DolphinViewContainer::slotUrlNavigatorLocationChanged(const QUrl &url)
             setSearchBarVisible(false);
         }
 
+        updateDrivesView(url);
         m_view->setUrl(url);
         tryRestoreViewState();
 
