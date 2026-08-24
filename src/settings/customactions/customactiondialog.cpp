@@ -6,14 +6,19 @@
 
 #include "customactiondialog.h"
 
+#include "customactions.h"
+
 #include <KIconButton>
 #include <KLocalizedString>
 
 #include <QDialogButtonBox>
+#include <QFileDialog>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 CustomActionDialog::CustomActionDialog(QWidget *parent, CustomActions::Target target, const CustomActions::Entry &entry)
@@ -40,9 +45,21 @@ CustomActionDialog::CustomActionDialog(QWidget *parent, CustomActions::Target ta
     hint->setWordWrap(true);
     hint->setTextFormat(Qt::RichText);
 
+    // Picking the program from disk saves typing its path; parameters can then
+    // be added by hand after it.
+    auto *browseButton = new QToolButton(this);
+    browseButton->setIcon(QIcon::fromTheme(QStringLiteral("document-open")));
+    browseButton->setToolTip(i18nc("@info:tooltip", "Pick an application…"));
+    connect(browseButton, &QToolButton::clicked, this, &CustomActionDialog::browseForApplication);
+
+    auto *commandRow = new QHBoxLayout();
+    commandRow->setContentsMargins(0, 0, 0, 0);
+    commandRow->addWidget(m_command);
+    commandRow->addWidget(browseButton);
+
     auto *form = new QFormLayout();
     form->addRow(i18nc("@label:textbox", "Name:"), m_name);
-    form->addRow(i18nc("@label:textbox", "Command:"), m_command);
+    form->addRow(i18nc("@label:textbox", "Command:"), commandRow);
     form->addRow(i18nc("@label:chooser", "Icon:"), m_icon);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -69,6 +86,36 @@ CustomActions::Entry CustomActionDialog::entry() const
     result.command = m_command->text().trimmed();
     result.icon = m_icon->icon();
     return result;
+}
+
+void CustomActionDialog::browseForApplication()
+{
+    const QString path = QFileDialog::getOpenFileName(this,
+                                                      i18nc("@title:window", "Pick an Application"),
+                                                      QStringLiteral("/usr/bin"),
+                                                      i18nc("@item:inlistbox file filter", "Applications (*.desktop);;All files (*)"));
+    if (path.isEmpty()) {
+        return;
+    }
+
+    QString name = m_name->text().trimmed();
+    QString icon = m_icon->icon();
+    const QString program = CustomActions::commandFor(path, name.isEmpty() ? &name : nullptr, &icon);
+    if (program.isEmpty()) {
+        return;
+    }
+
+    // Whatever parameters are already typed are kept, only the program changes.
+    m_command->setText(CustomActions::replaceProgram(m_command->text(), program));
+    if (m_name->text().trimmed().isEmpty() && !name.isEmpty()) {
+        m_name->setText(name);
+    }
+    if (!icon.isEmpty()) {
+        m_icon->setIcon(icon);
+    }
+
+    m_command->setFocus();
+    m_command->setCursorPosition(m_command->text().length());
 }
 
 void CustomActionDialog::updateOkButton()

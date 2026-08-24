@@ -45,6 +45,21 @@ QList<Entry> load(Target target);
 void save(Target target, const QList<Entry> &entries);
 
 /**
+ * Turns a file picked from disk into something to run.
+ *
+ * A .desktop file yields its Exec line without the field codes, and fills in
+ * @p suggestedName and @p suggestedIcon; anything else is taken as an
+ * executable and quoted. Returns an empty string if the file is unusable.
+ */
+QString commandFor(const QString &path, QString *suggestedName = nullptr, QString *suggestedIcon = nullptr);
+
+/**
+ * Puts @p program at the front of @p command, keeping the arguments that were
+ * already there, so picking an application twice does not lose the parameters.
+ */
+QString replaceProgram(const QString &command, const QString &program);
+
+/**
  * Runs an entry against the selected items.
  *
  * The command may contain the usual placeholders: %f and %F for a local path

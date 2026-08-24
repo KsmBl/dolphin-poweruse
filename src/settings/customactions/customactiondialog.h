@@ -30,6 +30,9 @@ public:
 private:
     void updateOkButton();
 
+    /** Asks for an executable or .desktop file and puts it in the command field. */
+    void browseForApplication();
+
     QLineEdit *m_name;
     QLineEdit *m_command;
     KIconButton *m_icon;

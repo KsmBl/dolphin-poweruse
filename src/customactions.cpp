@@ -8,10 +8,12 @@
 
 #include <KConfigGroup>
 #include <KIO/CommandLauncherJob>
+#include <KService>
 #include <KSharedConfig>
 #include <KShell>
 
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QWidget> // the launcher job takes a QObject parent, so the type must be complete
 
 namespace
@@ -84,6 +86,59 @@ void CustomActions::save(Target target, const QList<Entry> &entries)
 
     group.writeEntry("Count", entries.count());
     group.sync();
+}
+
+QString CustomActions::commandFor(const QString &path, QString *suggestedName, QString *suggestedIcon)
+{
+    if (path.isEmpty()) {
+        return {};
+    }
+
+    if (path.endsWith(QLatin1String(".desktop"))) {
+        const KService service(path);
+        QString exec = service.exec();
+        if (exec.isEmpty()) {
+            return {};
+        }
+
+        // Drop the Exec field codes: our own placeholders take their place.
+        static const QRegularExpression fieldCodes(QStringLiteral("%[uUfFickdDnNvm]"));
+        exec.remove(fieldCodes);
+        exec = exec.simplified();
+
+        if (suggestedName && !service.name().isEmpty()) {
+            *suggestedName = service.name();
+        }
+        if (suggestedIcon && !service.icon().isEmpty()) {
+            *suggestedIcon = service.icon();
+        }
+        return exec;
+    }
+
+    return KShell::quoteArg(path);
+}
+
+QString CustomActions::replaceProgram(const QString &command, const QString &program)
+{
+    if (program.isEmpty()) {
+        return command;
+    }
+    if (command.trimmed().isEmpty()) {
+        return program;
+    }
+
+    KShell::Errors error = KShell::NoError;
+    QStringList arguments = KShell::splitArgs(command, KShell::TildeExpand, &error);
+    if (error != KShell::NoError || arguments.isEmpty()) {
+        // Unparseable so far - the picked program is the safer thing to keep.
+        return program;
+    }
+
+    arguments.removeFirst();
+    if (arguments.isEmpty()) {
+        return program;
+    }
+    return program + QLatin1Char(' ') + KShell::joinArgs(arguments);
 }
 
 void CustomActions::run(const Entry &entry, const QList<QUrl> &urls, QWidget *window)
