@@ -1,4 +1,4 @@
-# dolphin-custom
+# dolphin-poweruse
 
 A checkout of KDE's [Dolphin](https://invent.kde.org/system/dolphin) to modify,
 with scripts that build it and put it in place of the distribution's Dolphin.
@@ -77,9 +77,9 @@ container swaps in while a `drives:/` URL is shown.
 ## Use it
 
 ```sh
-./install-custom.sh              # build and install over the packaged Dolphin
-./install-custom.sh --set-default   # ...and make it the file manager for folders
-./uninstall-custom.sh            # put the distribution's Dolphin back
+./install-poweruse.sh              # build and install over the packaged Dolphin
+./install-poweruse.sh --set-default   # ...and make it the file manager for folders
+./uninstall-poweruse.sh            # put the distribution's Dolphin back
 ```
 
 The first run asks for your sudo password, installs the build dependencies, and
@@ -102,7 +102,7 @@ Options:
 git switch custom
 # edit, then:
 git commit -am "..."
-./install-custom.sh
+./install-poweruse.sh
 ```
 
 Rebuilds are incremental, so after the first build a change takes seconds rather
@@ -113,7 +113,7 @@ than minutes.
 ```sh
 git fetch origin
 git rebase v26.08.1 custom     # or the next release tag
-./install-custom.sh
+./install-poweruse.sh
 ```
 
 If upstream has moved to a branch you do not have yet:
@@ -125,18 +125,18 @@ git fetch origin
 
 ## What lands where
 
-`install-custom.sh` runs `cmake --install` with the prefix `/usr`, so the build
+`install-poweruse.sh` runs `cmake --install` with the prefix `/usr`, so the build
 overwrites the packaged files in place: `/usr/bin/dolphin`, the Dolphin
 libraries and KIO/KPart plugins, the `.desktop` files, icons and translations.
 
 Before the first install it tars up every file the `dolphin` package owns into
-`/var/lib/dolphin-custom/package-files.tar`, and it keeps CMake's
+`/var/lib/dolphin-poweruse/package-files.tar`, and it keeps CMake's
 `install_manifest.txt` next to it so the uninstaller knows what this build added.
 
 ## Caveats
 
 * Upgrading the `dolphin` package overwrites your build. The pacman hook
-  installed here prints a reminder; re-run `install-custom.sh` afterwards.
+  installed here prints a reminder; re-run `install-poweruse.sh` afterwards.
 * `pacman -Qkk dolphin` will report the files as modified. That is expected.
-* `uninstall-custom.sh` restores by reinstalling the package, which is the
+* `uninstall-poweruse.sh` restores by reinstalling the package, which is the
   cleanest way back; the tarball is the fallback if the package is gone.

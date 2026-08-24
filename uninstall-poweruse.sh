@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# dolphin-custom - put the distribution's Dolphin back
+# dolphin-poweruse - put the distribution's Dolphin back
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set -euo pipefail
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="/var/lib/dolphin-custom"
-HOOK_FILE="/etc/pacman.d/hooks/95-dolphin-custom.hook"
+BACKUP_DIR="/var/lib/dolphin-poweruse"
+HOOK_FILE="/etc/pacman.d/hooks/95-dolphin-poweruse.hook"
 
 keep_extras=0
 
@@ -31,6 +31,8 @@ done
 
 # Files our build installed that the package does not own would survive a
 # reinstall and shadow nothing - remove them unless asked otherwise.
+[[ -d $BACKUP_DIR || ! -d /var/lib/dolphin-custom ]] || BACKUP_DIR="/var/lib/dolphin-custom"
+
 if (( ! keep_extras )) && [[ -f $BACKUP_DIR/install_manifest.txt ]]; then
     msg "Removing files this build added that the package does not have ..."
     owned="$(mktemp)"
@@ -53,8 +55,9 @@ else
 fi
 
 msg "Removing our leftovers ..."
-sudo rm -f "$HOOK_FILE"
-sudo rm -rf "$BACKUP_DIR"
+# The old name, for an install made before the project was renamed.
+sudo rm -f "$HOOK_FILE" "/etc/pacman.d/hooks/95-dolphin-custom.hook"
+sudo rm -rf "$BACKUP_DIR" "/var/lib/dolphin-custom"
 
 sudo update-desktop-database /usr/share/applications 2>/dev/null || true
 

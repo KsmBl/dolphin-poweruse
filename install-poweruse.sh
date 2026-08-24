@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# dolphin-custom - build this checkout and put it in place of the system Dolphin
+# dolphin-poweruse - build this checkout and put it in place of the system Dolphin
 #
-# The distribution's files are backed up first, and uninstall-custom.sh puts
+# The distribution's files are backed up first, and uninstall-poweruse.sh puts
 # them back by reinstalling the package.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -11,8 +11,8 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$PROJECT_DIR/build"
-BACKUP_DIR="/var/lib/dolphin-custom"
-HOOK_FILE="/etc/pacman.d/hooks/95-dolphin-custom.hook"
+BACKUP_DIR="/var/lib/dolphin-poweruse"
+HOOK_FILE="/etc/pacman.d/hooks/95-dolphin-poweruse.hook"
 
 jobs_arg=""
 install_hook=1
@@ -55,11 +55,11 @@ command -v pacman >/dev/null || die "this installer targets Arch Linux (pacman n
 
 # --- the distribution package ------------------------------------------------
 # Installing it first is the cheapest way to get every runtime dependency, and
-# it gives uninstall-custom.sh something to restore.
+# it gives uninstall-poweruse.sh something to restore.
 if ! pacman -Qq dolphin >/dev/null 2>&1; then
     warn "The dolphin package is not installed."
     warn "Installing it now: it pulls in the libraries this build needs at runtime,"
-    warn "and it is what uninstall-custom.sh restores afterwards."
+    warn "and it is what uninstall-poweruse.sh restores afterwards."
     sudo pacman -S --needed dolphin
 fi
 
@@ -93,6 +93,17 @@ if (( run_build )); then
 fi
 [[ -x $BUILD_DIR/bin/dolphin ]] || die "no dolphin binary in $BUILD_DIR/bin."
 
+# --- carry over an install made under the old name ---------------------------
+OLD_BACKUP_DIR="/var/lib/dolphin-custom"
+OLD_HOOK_FILE="/etc/pacman.d/hooks/95-dolphin-custom.hook"
+if [[ -d $OLD_BACKUP_DIR && ! -d $BACKUP_DIR ]]; then
+    msg "Moving the backup from $OLD_BACKUP_DIR to $BACKUP_DIR"
+    sudo mv "$OLD_BACKUP_DIR" "$BACKUP_DIR"
+fi
+if [[ -f $OLD_HOOK_FILE ]]; then
+    sudo rm -f "$OLD_HOOK_FILE"
+fi
+
 # --- back up the packaged files ----------------------------------------------
 sudo mkdir -p "$BACKUP_DIR"
 if [[ ! -f $BACKUP_DIR/package-files.tar ]]; then
@@ -121,16 +132,16 @@ fi
 if (( install_hook )); then
     sudo install -d /etc/pacman.d/hooks
     sudo tee "$HOOK_FILE" >/dev/null <<EOF
-# Installed by dolphin-custom
+# Installed by dolphin-poweruse
 [Trigger]
 Operation = Upgrade
 Type = Package
 Target = dolphin
 
 [Action]
-Description = dolphin-custom: your build was replaced by the upgrade
+Description = dolphin-poweruse: your build was replaced by the upgrade
 When = PostTransaction
-Exec = /usr/bin/bash -c 'printf "\n>> dolphin was upgraded, so the distribution build is back.\n>> Rebase your changes and re-run %s\n\n" "$PROJECT_DIR/install-custom.sh"'
+Exec = /usr/bin/bash -c 'printf "\n>> dolphin was upgraded, so the distribution build is back.\n>> Rebase your changes and re-run %s\n\n" "$PROJECT_DIR/install-poweruse.sh"'
 EOF
     msg "Pacman hook installed at $HOOK_FILE"
 fi
@@ -143,5 +154,5 @@ $(dolphin --version 2>/dev/null | head -1)
   sources: $PROJECT_DIR  (branch $(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD))
 
 Make your changes, then re-run this script to build and install them again.
-To go back to the distribution's Dolphin: $PROJECT_DIR/uninstall-custom.sh
+To go back to the distribution's Dolphin: $PROJECT_DIR/uninstall-poweruse.sh
 EOF
