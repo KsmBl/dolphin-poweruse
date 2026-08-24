@@ -93,7 +93,9 @@ void CustomActionDialog::browseForApplication()
     const QString path = QFileDialog::getOpenFileName(this,
                                                       i18nc("@title:window", "Pick an Application"),
                                                       QStringLiteral("/usr/bin"),
-                                                      i18nc("@item:inlistbox file filter", "Applications (*.desktop);;All files (*)"));
+                                                      // All files first: it is the default, and /usr/bin is full of
+                                                      // binaries without an extension that a *.desktop filter hides.
+                                                      i18nc("@item:inlistbox file filter", "All files (*);;Application launchers (*.desktop)"));
     if (path.isEmpty()) {
         return;
     }
