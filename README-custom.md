@@ -6,6 +6,47 @@ with scripts that build it and put it in place of the distribution's Dolphin.
 * branch `custom`, based on **v26.08.0** — the version Arch ships (`dolphin 26.08.0-4`)
 * branch `release/26.08` — untouched upstream, for rebasing onto later fixes
 
+## What this fork changes
+
+### Custom context menu entries, split by kind
+
+**Settings → Configure Dolphin… → Custom Actions** holds two separate lists:
+
+* **When directories are selected** — entries offered for a selection of folders
+* **When files are selected** — entries offered for a selection of files
+
+Each entry is a name, an icon and a command. They appear in the context menu
+below the built-in entries, in their own group.
+
+A selection that mixes files and folders gets neither list, since an entry
+written for one kind rarely fits the other.
+
+The command understands the usual placeholders:
+
+| | |
+|---|---|
+| `%f` | path of the item |
+| `%F` | paths of every selected item |
+| `%u`, `%U` | the same as URLs |
+| `%d` | the folder the item is in |
+
+A command with no placeholder gets the paths appended, so `ark --add` works as
+written. Everything is quoted, so spaces in names are safe.
+
+Entries live in `~/.config/dolphinrc`:
+
+```ini
+[CustomActions][Directories][0]
+Name=Open Terminal Here
+Icon=utilities-terminal
+Command=konsole --workdir %f
+```
+
+Touched upstream files: `src/dolphincontextmenu.{h,cpp}` (the entries),
+`src/settings/dolphinsettingsdialog.cpp` (the page) and `src/CMakeLists.txt`.
+Everything else lives in `src/customactions.{h,cpp}` and
+`src/settings/customactions/`, which keeps rebasing onto a new Dolphin cheap.
+
 ## Use it
 
 ```sh

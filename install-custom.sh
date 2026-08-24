@@ -64,7 +64,7 @@ if ! pacman -Qq dolphin >/dev/null 2>&1; then
 fi
 
 PACKAGE_VERSION="$(pacman -Q dolphin 2>/dev/null | awk '{print $2}')"
-CHECKOUT_VERSION="$(git -C "$PROJECT_DIR" describe --tags 2>/dev/null || echo unknown)"
+CHECKOUT_VERSION="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null || echo unknown)"
 msg "Package: dolphin $PACKAGE_VERSION, checkout: $CHECKOUT_VERSION"
 case "$PACKAGE_VERSION" in
     "${CHECKOUT_VERSION#v}"*) ;;
