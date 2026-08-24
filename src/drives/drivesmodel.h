@@ -33,6 +33,7 @@ public:
         TotalBytesRole,
         AccessibleRole,
         TargetUrlRole, ///< where a click should go
+        UdiRole, ///< the Solid identifier, for mounting and unmounting
     };
 
     explicit DrivesModel(QObject *parent = nullptr);

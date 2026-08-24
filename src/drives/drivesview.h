@@ -7,9 +7,12 @@
 #ifndef DRIVESVIEW_H
 #define DRIVESVIEW_H
 
+#include <QHash>
 #include <QListView>
 #include <QStyledItemDelegate>
 #include <QUrl>
+
+#include <Solid/Device>
 
 class DrivesModel;
 
@@ -50,8 +53,22 @@ Q_SIGNALS:
     /** A drive was activated; the mount point, or drives:/<udi> when unmounted. */
     void driveActivated(const QUrl &url);
 
+protected:
+    void contextMenuEvent(QContextMenuEvent *event) override;
+
 private:
+    /**
+     * Mounts through Solid, which asks UDisks2 to do it for the current user -
+     * no root, and a passphrase prompt for an encrypted container. Navigates to
+     * the mount point once it is there.
+     */
+    void mountAndOpen(const QModelIndex &index);
+    void unmount(const QModelIndex &index);
+    void showProperties(const QModelIndex &index);
+
     DrivesModel *m_model;
+    /** Devices waiting for a mount or unmount to finish. */
+    QHash<QString, Solid::Device> m_pending;
 };
 
 #endif

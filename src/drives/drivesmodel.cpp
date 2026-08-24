@@ -108,6 +108,8 @@ QVariant DrivesModel::data(const QModelIndex &index, int role) const
         return drive.accessible;
     case TargetUrlRole:
         return drive.targetUrl;
+    case UdiRole:
+        return drive.udi;
     case Qt::ToolTipRole:
         return drive.label;
     default:
