@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QFontMetrics>
 #include <QIcon>
+#include <QKeyEvent>
 #include <QMenu>
 
 #include <KIO/JobTracker>
@@ -246,6 +247,16 @@ void DrivesView::unmount(const QModelIndex &index)
     access->teardown();
 }
 
+bool DrivesView::showPropertiesForCurrent()
+{
+    const QModelIndex index = currentIndex();
+    if (!index.isValid()) {
+        return false;
+    }
+    showProperties(index);
+    return true;
+}
+
 void DrivesView::showProperties(const QModelIndex &index)
 {
     if (!index.isValid()) {
@@ -261,6 +272,33 @@ void DrivesView::showProperties(const QModelIndex &index)
     auto *dialog = new KPropertiesDialog(url, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->show();
+}
+
+namespace
+{
+/*! The shortcut the "Properties" action carries, in both its spellings. */
+bool isPropertiesShortcut(const QKeyEvent *event)
+{
+    return event->modifiers().testFlag(Qt::AltModifier) && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter);
+}
+}
+
+bool DrivesView::event(QEvent *event)
+{
+    if (event->type() == QEvent::ShortcutOverride && isPropertiesShortcut(static_cast<QKeyEvent *>(event))) {
+        event->accept();
+        return true;
+    }
+    return QListView::event(event);
+}
+
+void DrivesView::keyPressEvent(QKeyEvent *event)
+{
+    if (isPropertiesShortcut(event)) {
+        showPropertiesForCurrent();
+        return;
+    }
+    QListView::keyPressEvent(event);
 }
 
 void DrivesView::contextMenuEvent(QContextMenuEvent *event)

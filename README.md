@@ -92,9 +92,13 @@ What you can do with a row:
 
 | Action | Result |
 |---|---|
-| Double-click | opens it; an unmounted device is mounted first |
+| Double-click, or Return | opens it; an unmounted device is mounted first |
 | Right-click | open, mount/unmount, copy the mount point or device node, format, wipe free space, properties |
-| Properties | the usual dialog on the mount point, so its size is worked out for you |
+| Properties, or Alt+Return | the usual dialog on the mount point, so its size is worked out for you |
+
+The list takes the keyboard focus when it appears and highlights a row, so the
+arrow keys, Return and Alt+Return all reach it. Alt+Return deliberately opens
+the same dialog the context menu does — about the drive, not about `drives:/`.
 
 ![The context menu on a drive](screenshots/drive-menu.png)
 

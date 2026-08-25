@@ -660,6 +660,15 @@ void DolphinViewContainer::updateDrivesView(const QUrl &url)
     }
     m_drivesView->setVisible(showDrives);
     m_view->setVisible(!showDrives);
+
+    if (showDrives) {
+        // Without a current row and the focus, the keyboard reaches nothing in
+        // the list -- no arrow keys, and nothing for Alt+Return to act on.
+        if (!m_drivesView->currentIndex().isValid() && m_drivesView->model()->rowCount() > 0) {
+            m_drivesView->setCurrentIndex(m_drivesView->model()->index(0, 0));
+        }
+        m_drivesView->setFocus();
+    }
 }
 
 void DolphinViewContainer::setFilterBarVisible(bool visible)

@@ -49,12 +49,32 @@ public:
     /** Re-reads the devices, for when the view becomes visible again. */
     void refresh();
 
+    /**
+     * Opens the properties dialog for the highlighted drive -- the same one the
+     * context menu opens, so Alt+Return and right-click agree.
+     *
+     * @return false when there is no drive to show, so the caller can fall back
+     * to whatever it would have done otherwise.
+     */
+    bool showPropertiesForCurrent();
+
 Q_SIGNALS:
     /** A drive was activated; the mount point, or drives:/<udi> when unmounted. */
     void driveActivated(const QUrl &url);
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
+
+    /**
+     * Claims Alt+Return before the window-wide "Properties" action can take it.
+     *
+     * That action works on the ordinary view, which is hidden and empty while
+     * this list is up, so it would open a dialog about drives:/ instead of
+     * about the drive. Accepting the ShortcutOverride makes Qt deliver the key
+     * here as an ordinary key press instead.
+     */
+    bool event(QEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private:
     /**
