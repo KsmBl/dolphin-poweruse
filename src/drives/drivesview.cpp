@@ -375,14 +375,15 @@ void DrivesView::wipeFreeSpace(const QModelIndex &index)
     }
 
     // Say plainly what this does and does not achieve before spending the time.
-    const QString question = i18nc("@info",
-                                   "<para>This fills the free space of <filename>%1</filename> with zeros and then "
-                                   "releases it again, so what is left of deleted files is overwritten.</para>"
-                                   "<para>It writes until the filesystem is nearly full and can take a long time. On "
-                                   "an SSD it is <emphasis>not</emphasis> a guarantee: the drive decides which blocks "
-                                   "it hands out, and spare areas are never reachable from here. Discarding "
-                                   "(<command>fstrim</command>) is the tool that applies there.</para>",
-                                   mountPoint);
+    const QString question = xi18nc("@info",
+                                    "<para>This fills the free space of <filename>%1</filename> with zeros and then "
+                                    "releases it again, so what is left of deleted files is overwritten.</para>"
+                                    "<para>Files that are still there are not touched.</para>"
+                                    "<para>It writes until the filesystem is nearly full and can take a long time. On "
+                                    "an SSD it is <emphasis>not</emphasis> a guarantee: the drive decides which blocks "
+                                    "it hands out, and spare areas are never reachable from here. Discarding "
+                                    "(<command>fstrim</command>) is the tool that applies there.</para>",
+                                    mountPoint);
 
     if (KMessageBox::warningContinueCancel(this,
                                            question,

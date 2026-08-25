@@ -79,7 +79,13 @@ QString DriveTools::udisksPath(const Solid::Device &device)
     return udi.startsWith(QLatin1String("/org/freedesktop/UDisks2/")) ? udi : QString();
 }
 
-bool DriveTools::isSystemCritical(const Solid::Device &device, QString *reason)
+namespace
+{
+/*!
+ * Whether this one device -- ignoring anything that lives on it -- is something
+ * the running system needs.
+ */
+bool isCriticalItself(const Solid::Device &device, QString *reason)
 {
     const auto setReason = [reason](const QString &text) {
         if (reason) {
@@ -89,26 +95,84 @@ bool DriveTools::isSystemCritical(const Solid::Device &device, QString *reason)
     };
 
     Solid::Device copy = device;
-    if (udisksPath(device).isEmpty()) {
-        return setReason(i18nc("@info", "This device is not one UDisks2 can format."));
-    }
 
     if (const auto *access = copy.as<Solid::StorageAccess>(); access && access->isAccessible()) {
         const QString mountPoint = access->filePath();
         if (isCriticalMountPoint(mountPoint)) {
             return setReason(i18nc("@info", "This device is mounted at %1, which the running system needs.", mountPoint));
         }
+    }
 
-        // The device the running root lives on, whatever it is mounted as now.
-        const QStorageInfo root(QStringLiteral("/"));
-        if (const auto *block = copy.as<Solid::Block>(); block && root.device() == block->device().toUtf8()) {
-            return setReason(i18nc("@info", "This device holds the running system."));
-        }
+    // The device the running root lives on, whatever it is mounted as now -- and
+    // checked even when it is not mounted, so an unmounted system partition is
+    // still refused.
+    const QStorageInfo root(QStringLiteral("/"));
+    if (const auto *block = copy.as<Solid::Block>(); block && root.device() == block->device().toUtf8()) {
+        return setReason(i18nc("@info", "This device holds the running system."));
     }
 
     if (const auto *volume = copy.as<Solid::StorageVolume>();
         volume && volume->usage() == Solid::StorageVolume::Other && volume->fsType() == QLatin1String("swap")) {
         return setReason(i18nc("@info", "This device is in use as swap."));
+    }
+
+    return false;
+}
+
+/*!
+ * Whether @p volume is a partition of @p disk.
+ *
+ * Solid hangs a whole disk and its partitions off the same drive as siblings,
+ * so there is no parent to walk up to. What identifies them as belonging
+ * together is that drive plus the kernel's naming: sda1 is on sda, nvme0n1p2 is
+ * on nvme0n1.
+ */
+bool isPartitionOf(const Solid::Device &volume, const Solid::Device &disk)
+{
+    if (volume.udi() == disk.udi() || volume.parentUdi() != disk.parentUdi()) {
+        return false;
+    }
+    Solid::Device volumeCopy = volume;
+    Solid::Device diskCopy = disk;
+    const auto *volumeBlock = volumeCopy.as<Solid::Block>();
+    const auto *diskBlock = diskCopy.as<Solid::Block>();
+    if (!volumeBlock || !diskBlock) {
+        return false;
+    }
+    const QString volumePath = volumeBlock->device();
+    const QString diskPath = diskBlock->device();
+    return volumePath.length() > diskPath.length() && volumePath.startsWith(diskPath);
+}
+}
+
+bool DriveTools::isSystemCritical(const Solid::Device &device, QString *reason)
+{
+    if (udisksPath(device).isEmpty()) {
+        if (reason) {
+            *reason = i18nc("@info", "This device is not one UDisks2 can format.");
+        }
+        return true;
+    }
+
+    if (isCriticalItself(device, reason)) {
+        return true;
+    }
+
+    // Formatting a whole disk takes its partitions with it, so the disk is only
+    // safe to touch if every partition on it is.
+    for (const Solid::Device &volume : Solid::Device::listFromType(Solid::DeviceInterface::StorageVolume)) {
+        if (!isPartitionOf(volume, device)) {
+            continue;
+        }
+        QString why;
+        if (isCriticalItself(volume, &why)) {
+            if (reason) {
+                Solid::Device partition(volume.udi());
+                const auto *block = partition.as<Solid::Block>();
+                *reason = i18nc("@info", "%1 is a partition on this device, and the running system needs it.", block ? block->device() : volume.udi());
+            }
+            return true;
+        }
     }
 
     return false;

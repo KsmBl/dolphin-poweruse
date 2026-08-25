@@ -25,8 +25,8 @@ FormatDialog::FormatDialog(QWidget *parent, const QString &devicePath, const QSt
     setWindowTitle(i18nc("@title:window", "Format Drive"));
 
     auto *warning = new QLabel(i18nc("@info",
-                                     "<para><b>Everything on %1 will be gone.</b> Formatting writes a new, empty "
-                                     "filesystem over the whole device, and there is no undo.</para>",
+                                     "<p><b>Everything on %1 will be gone.</b> Formatting writes a new, empty "
+                                     "filesystem over the whole device, and there is no undo.</p>",
                                      description.isEmpty() ? devicePath : description),
                                this);
     warning->setWordWrap(true);

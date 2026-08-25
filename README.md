@@ -184,7 +184,9 @@ Formatting cannot be undone, so it is guarded twice:
 
 * Devices the running system needs are refused outright — anything mounted at
   `/`, `/boot`, `/home`, `/usr`, `/var`, `/etc`, the device holding the running
-  root, and swap in use. The entry is greyed out with the reason.
+  root, and swap in use. A whole disk is refused if any partition on it is, so
+  the system drive cannot be formatted by picking the disk instead of the
+  partition. The entry is greyed out with the reason.
 * For everything else, the Format button stays disabled until the device node
   has been **typed out by hand**. Clicking the wrong row in a list is easy;
   typing `/dev/sdb1` by accident is not.
@@ -193,6 +195,13 @@ Formatting cannot be undone, so it is guarded twice:
 and then releases it again, so the contents of deleted files are overwritten. It
 runs as an ordinary job, with progress and a cancel button, and it stops short
 of full so it cannot wedge a filesystem that something else is writing to.
+
+**Files that are still there are never touched.** The job only ever creates its
+own filling files and deletes those again — it opens them with `O_EXCL`, so it
+cannot write over something that already has the name, and it removes them on
+success, on cancellation and from its destructor. Each chunk is `fsync`ed before
+the next: a file deleted while its pages are still only in the page cache is
+never written to the device at all, and then nothing would have been overwritten.
 
 Two honest limits, both stated in the dialog:
 
@@ -203,6 +212,10 @@ Two honest limits, both stated in the dialog:
   encrypted container, overwriting does what it says.
 * Filesystems held in memory (`tmpfs`, `ramfs`) are refused: there is nothing on
   a disk to overwrite, and filling one would eat the machine's RAM.
+
+It also only overwrites whole free blocks. What is left inside the last, partly
+used block of a file that is still there, and deleted file *names* still sitting
+in directory blocks, are not reachable this way.
 
 ## Install
 
