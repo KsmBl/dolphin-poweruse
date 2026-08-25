@@ -7,8 +7,12 @@
 #include "drivesview.h"
 
 #include "drivesmodel.h"
+#include "drivetools.h"
+#include "formatdialog.h"
+#include "wipefreespacejob.h"
 
 #include <KIO/Global>
+#include <KJobWidgets>
 #include <KLocalizedString>
 #include <KMessageBox>
 #include <KPropertiesDialog>
@@ -23,6 +27,9 @@
 #include <QFontMetrics>
 #include <QIcon>
 #include <QMenu>
+
+#include <KIO/JobTracker>
+#include <KJobTrackerInterface>
 #include <QPainter>
 #include <QStyleOptionProgressBar>
 
@@ -287,6 +294,20 @@ void DrivesView::contextMenuEvent(QContextMenuEvent *event)
     QAction *copyDevicePath = menu.addAction(QIcon::fromTheme(QStringLiteral("edit-copy")), i18nc("@action:inmenu", "Copy Device Path"));
 
     menu.addSeparator();
+    QAction *wipeAction = menu.addAction(QIcon::fromTheme(QStringLiteral("edit-clear-all")), i18nc("@action:inmenu", "Overwrite Free Space…"));
+    wipeAction->setEnabled(accessible);
+    wipeAction->setToolTip(i18nc("@info:tooltip", "Overwrites what is left of deleted files with zeros."));
+
+    QString criticalReason;
+    Solid::Device device(index.data(DrivesModel::UdiRole).toString());
+    const bool critical = DriveTools::isSystemCritical(device, &criticalReason);
+    QAction *formatAction = menu.addAction(QIcon::fromTheme(QStringLiteral("drive-harddisk")), i18nc("@action:inmenu", "Format…"));
+    formatAction->setEnabled(!critical);
+    if (critical) {
+        formatAction->setToolTip(criticalReason);
+    }
+
+    menu.addSeparator();
     QAction *propertiesAction = menu.addAction(QIcon::fromTheme(QStringLiteral("document-properties")), i18nc("@action:inmenu", "Properties…"));
 
     const QAction *chosen = menu.exec(event->globalPos());
@@ -304,7 +325,82 @@ void DrivesView::contextMenuEvent(QContextMenuEvent *event)
         QGuiApplication::clipboard()->setText(mountPoint);
     } else if (chosen == copyDevicePath) {
         QGuiApplication::clipboard()->setText(devicePath);
+    } else if (chosen == wipeAction) {
+        wipeFreeSpace(index);
+    } else if (chosen == formatAction) {
+        formatDrive(index);
     } else if (chosen == propertiesAction) {
         showProperties(index);
     }
+}
+
+void DrivesView::formatDrive(const QModelIndex &index)
+{
+    if (!index.isValid()) {
+        return;
+    }
+
+    Solid::Device device(index.data(DrivesModel::UdiRole).toString());
+    QString reason;
+    if (DriveTools::isSystemCritical(device, &reason)) {
+        KMessageBox::error(this, reason);
+        return;
+    }
+
+    const QList<DriveTools::Filesystem> filesystems = DriveTools::availableFilesystems();
+    if (filesystems.isEmpty()) {
+        KMessageBox::error(this, i18nc("@info", "No filesystem tools are installed, so nothing can be created."));
+        return;
+    }
+
+    const QString devicePath = index.data(DrivesModel::DevicePathRole).toString();
+    FormatDialog dialog(this, devicePath, index.data(DrivesModel::LabelRole).toString(), filesystems);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    DriveTools::format(device, dialog.filesystemType(), dialog.label(), dialog.eraseFirst(), this);
+    m_model->refresh();
+}
+
+void DrivesView::wipeFreeSpace(const QModelIndex &index)
+{
+    if (!index.isValid()) {
+        return;
+    }
+
+    const QString mountPoint = index.data(DrivesModel::MountPointRole).toString();
+    if (mountPoint.isEmpty()) {
+        return;
+    }
+
+    // Say plainly what this does and does not achieve before spending the time.
+    const QString question = i18nc("@info",
+                                   "<para>This fills the free space of <filename>%1</filename> with zeros and then "
+                                   "releases it again, so what is left of deleted files is overwritten.</para>"
+                                   "<para>It writes until the filesystem is nearly full and can take a long time. On "
+                                   "an SSD it is <emphasis>not</emphasis> a guarantee: the drive decides which blocks "
+                                   "it hands out, and spare areas are never reachable from here. Discarding "
+                                   "(<command>fstrim</command>) is the tool that applies there.</para>",
+                                   mountPoint);
+
+    if (KMessageBox::warningContinueCancel(this,
+                                           question,
+                                           i18nc("@title:window", "Overwrite Free Space"),
+                                           KGuiItem(i18nc("@action:button", "Overwrite"), QStringLiteral("edit-clear-all")),
+                                           KStandardGuiItem::cancel())
+        != KMessageBox::Continue) {
+        return;
+    }
+
+    auto *job = new WipeFreeSpaceJob(mountPoint, this);
+    KJobWidgets::setWindow(job, this);
+    KIO::getJobTracker()->registerJob(job);
+    connect(job, &KJob::result, this, [this](KJob *job) {
+        if (job->error() && job->error() != KJob::KilledJobError) {
+            KMessageBox::error(this, job->errorString());
+        }
+        m_model->refresh();
+    });
+    job->start();
 }

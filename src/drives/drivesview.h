@@ -66,6 +66,10 @@ private:
     void unmount(const QModelIndex &index);
     void showProperties(const QModelIndex &index);
 
+    /*! Both destroy data, so both ask first and refuse system devices. */
+    void formatDrive(const QModelIndex &index);
+    void wipeFreeSpace(const QModelIndex &index);
+
     DrivesModel *m_model;
     /** Devices waiting for a mount or unmount to finish. */
     QHash<QString, Solid::Device> m_pending;

@@ -296,6 +296,9 @@ target_sources(dolphinstatic PRIVATE
     dolphinmainwindow.cpp
     dolphinviewcontainer.cpp
     drives/drivesmodel.cpp
+    drives/drivetools.cpp
+    drives/formatdialog.cpp
+    drives/wipefreespacejob.cpp
     drives/drivesview.cpp
     dolphincontextmenu.cpp
     dolphinnavigatorswidgetaction.cpp

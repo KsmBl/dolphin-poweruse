@@ -9,6 +9,8 @@ manager, with a handful of additions for people who live in their file manager:
   mounted where and how full it is, with mounting straight from the list
 * **[Faster copying of many small files](#3-copying-many-small-files-several-at-a-time)**,
   by keeping several operations in flight instead of one at a time
+* **[Formatting and free space wiping](#4-formatting-a-drive-and-overwriting-free-space)**
+  from the drive list and the Places panel
 
 ![The drives view](screenshots/drives.png)
 
@@ -167,6 +169,40 @@ comes from concurrency, and for small files KIO uses `copy_file_range()`, which
 never allocates a user-space buffer at all — there is no buffer left to size.
 
 ---
+
+### 4. Formatting a drive, and overwriting free space
+
+Right-clicking a drive — in `drives:/` or in the Places panel — offers two
+destructive operations that Dolphin otherwise sends you elsewhere for.
+
+**Format…** asks for a filesystem and an optional label, then hands the work to
+UDisks2, which asks polkit rather than needing root. Only filesystems whose
+`mkfs` is actually installed are offered, so the list matches the machine.
+Optionally the whole device is written over with zeros first.
+
+Formatting cannot be undone, so it is guarded twice:
+
+* Devices the running system needs are refused outright — anything mounted at
+  `/`, `/boot`, `/home`, `/usr`, `/var`, `/etc`, the device holding the running
+  root, and swap in use. The entry is greyed out with the reason.
+* For everything else, the Format button stays disabled until the device node
+  has been **typed out by hand**. Clicking the wrong row in a list is easy;
+  typing `/dev/sdb1` by accident is not.
+
+**Overwrite Free Space…** fills what the filesystem reports as free with zeros
+and then releases it again, so the contents of deleted files are overwritten. It
+runs as an ordinary job, with progress and a cancel button, and it stops short
+of full so it cannot wedge a filesystem that something else is writing to.
+
+Two honest limits, both stated in the dialog:
+
+* **On an SSD this is not a guarantee.** Wear levelling means the blocks the
+  drive hands out are not the blocks the old data sits in, and over-provisioned
+  areas are never addressable from user space at all. Discarding (`fstrim`) is
+  the tool that applies there; on a hard disk, a USB stick or inside an
+  encrypted container, overwriting does what it says.
+* Filesystems held in memory (`tmpfs`, `ramfs`) are refused: there is nothing on
+  a disk to overwrite, and filling one would eat the machine's RAM.
 
 ## Install
 

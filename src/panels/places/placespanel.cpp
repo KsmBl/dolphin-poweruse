@@ -25,8 +25,20 @@
 
 #include <QIcon>
 #include <QMenu>
+
+#include "drives/drivetools.h"
+#include "drives/formatdialog.h"
+#include "drives/wipefreespacejob.h"
+
+#include <KIO/JobTracker>
+#include <KJobTrackerInterface>
+#include <KJobWidgets>
+#include <KMessageBox>
+
 #include <QMimeData>
 #include <QShowEvent>
+#include <Solid/Block>
+#include <Solid/StorageAccess>
 
 #include <Solid/StorageAccess>
 
@@ -182,14 +194,16 @@ void PlacesPanel::slotUrlsDropped(const QUrl &dest, QDropEvent *event, QWidget *
 
 void PlacesPanel::slotContextMenuAboutToShow(const QModelIndex &index, QMenu *menu)
 {
-    Q_UNUSED(menu);
-
     auto *placesModel = static_cast<KFilePlacesModel *>(model());
     const QUrl url = placesModel->url(index);
     const Solid::Device device = placesModel->deviceForIndex(index);
 
     m_configureTrashAction->setVisible(url.scheme() == QLatin1String("trash"));
     m_openInSplitView->setVisible(url.isValid());
+
+    if (device.isValid() && menu) {
+        addDriveActions(index, menu);
+    }
 
     // show customContextMenuActions only on the view's context menu
     if (!url.isValid() && !device.isValid()) {
@@ -279,3 +293,69 @@ void PlacesPanel::connectDeviceSignals(const QModelIndex &index)
 }
 
 #include "moc_placespanel.cpp"
+
+void PlacesPanel::addDriveActions(const QModelIndex &index, QMenu *menu)
+{
+    auto *placesModel = static_cast<KFilePlacesModel *>(model());
+    Solid::Device device = placesModel->deviceForIndex(index);
+    const auto *access = device.as<Solid::StorageAccess>();
+    const QString mountPoint = access && access->isAccessible() ? access->filePath() : QString();
+
+    menu->addSeparator();
+
+    QAction *wipeAction = menu->addAction(QIcon::fromTheme(QStringLiteral("edit-clear-all")), i18nc("@action:inmenu", "Overwrite Free Space…"));
+    wipeAction->setEnabled(!mountPoint.isEmpty());
+    connect(wipeAction, &QAction::triggered, this, [this, mountPoint]() {
+        const QString question = i18nc("@info",
+                                       "<para>This fills the free space of <filename>%1</filename> with zeros and then "
+                                       "releases it again, so what is left of deleted files is overwritten.</para>"
+                                       "<para>It writes until the filesystem is nearly full and can take a long time. "
+                                       "On an SSD it is <emphasis>not</emphasis> a guarantee: the drive decides which "
+                                       "blocks it hands out, and spare areas are never reachable from here.</para>",
+                                       mountPoint);
+        if (KMessageBox::warningContinueCancel(this,
+                                               question,
+                                               i18nc("@title:window", "Overwrite Free Space"),
+                                               KGuiItem(i18nc("@action:button", "Overwrite"), QStringLiteral("edit-clear-all")),
+                                               KStandardGuiItem::cancel())
+            != KMessageBox::Continue) {
+            return;
+        }
+
+        auto *job = new WipeFreeSpaceJob(mountPoint, this);
+        KJobWidgets::setWindow(job, this);
+        KIO::getJobTracker()->registerJob(job);
+        connect(job, &KJob::result, this, [this](KJob *job) {
+            if (job->error() && job->error() != KJob::KilledJobError) {
+                KMessageBox::error(this, job->errorString());
+            }
+        });
+        job->start();
+    });
+
+    QString criticalReason;
+    const bool critical = DriveTools::isSystemCritical(device, &criticalReason);
+    QAction *formatAction = menu->addAction(QIcon::fromTheme(QStringLiteral("drive-harddisk")), i18nc("@action:inmenu", "Format…"));
+    formatAction->setEnabled(!critical);
+    if (critical) {
+        formatAction->setToolTip(criticalReason);
+    }
+    connect(formatAction, &QAction::triggered, this, [this, device]() {
+        Solid::Device target = device;
+        const QList<DriveTools::Filesystem> filesystems = DriveTools::availableFilesystems();
+        if (filesystems.isEmpty()) {
+            KMessageBox::error(this, i18nc("@info", "No filesystem tools are installed, so nothing can be created."));
+            return;
+        }
+
+        QString devicePath = target.udi();
+        if (const auto *block = target.as<Solid::Block>()) {
+            devicePath = block->device();
+        }
+
+        FormatDialog dialog(this, devicePath, target.displayName(), filesystems);
+        if (dialog.exec() == QDialog::Accepted) {
+            DriveTools::format(target, dialog.filesystemType(), dialog.label(), dialog.eraseFirst(), this);
+        }
+    });
+}

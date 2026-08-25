@@ -67,6 +67,9 @@ private Q_SLOTS:
     void slotRowsAboutToBeRemoved(const QModelIndex &parent, int first, int last);
 
 private:
+    /*! Format and free-space wipe, offered for real devices only. */
+    void addDriveActions(const QModelIndex &index, QMenu *menu);
+
     void connectDeviceSignals(const QModelIndex &idx);
 
     QList<QAction *> m_customContextMenuActions;
