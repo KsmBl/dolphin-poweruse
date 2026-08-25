@@ -2,8 +2,13 @@
 
 A small fork of **[Dolphin](https://apps.kde.org/dolphin/)**, KDE's file
 manager, with a handful of additions for people who live in their file manager:
-context menu entries you define yourself, and a drive list that shows what is
-mounted where and how full it is.
+
+* **[Custom context menu entries](#1-custom-context-menu-entries-split-by-kind)**
+  you define yourself, kept apart for directories and for files
+* **[A drive list at `drives:/`](#2-a-drive-list-at-drives)** showing what is
+  mounted where and how full it is, with mounting straight from the list
+* **[Faster copying of many small files](#3-copying-many-small-files-several-at-a-time)**,
+  by keeping several operations in flight instead of one at a time
 
 ![The drives view](screenshots/drives.png)
 
