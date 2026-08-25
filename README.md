@@ -45,6 +45,8 @@ Current base: **v26.08.0**.
 
 **Settings → Configure Dolphin… → Custom Actions** holds two independent lists:
 
+![The Custom Actions settings page](screenshots/custom-actions.png)
+
 | List | Shown when |
 |---|---|
 | When directories are selected | the selection is made of folders |
@@ -91,8 +93,10 @@ What you can do with a row:
 | Action | Result |
 |---|---|
 | Double-click | opens it; an unmounted device is mounted first |
-| Right-click | open, mount/unmount, copy the mount point or device node, properties |
+| Right-click | open, mount/unmount, copy the mount point or device node, format, wipe free space, properties |
 | Properties | the usual dialog on the mount point, so its size is worked out for you |
+
+![The context menu on a drive](screenshots/drive-menu.png)
 
 Mounting goes through Solid, which asks **UDisks2** to mount as the current user
 — no root — and an encrypted container asks for its passphrase at that point.
@@ -154,8 +158,11 @@ same. The job steps aside and hands the whole operation to the ordinary
 * or there are fewer files than the threshold, where batching costs more than it
   saves.
 
-**Settings → Configure Dolphin… → Copying** turns it off or tunes it, and the
-same values live in `dolphinrc`:
+**Settings → Configure Dolphin… → Copying** turns it off or tunes it:
+
+![The Copying settings page](screenshots/copying.png)
+
+The same values live in `dolphinrc`:
 
 ```ini
 [PowerCopy]
@@ -180,6 +187,8 @@ UDisks2, which asks polkit rather than needing root. Only filesystems whose
 `mkfs` is actually installed are offered, so the list matches the machine.
 Optionally the whole device is written over with zeros first.
 
+![The Format dialog](screenshots/format-dialog.png)
+
 Formatting cannot be undone, so it is guarded twice:
 
 * Devices the running system needs are refused outright — anything mounted at
@@ -195,6 +204,8 @@ Formatting cannot be undone, so it is guarded twice:
 and then releases it again, so the contents of deleted files are overwritten. It
 runs as an ordinary job, with progress and a cancel button, and it stops short
 of full so it cannot wedge a filesystem that something else is writing to.
+
+![The warning shown before overwriting free space](screenshots/wipe-warning.png)
 
 **Files that are still there are never touched.** The job only ever creates its
 own filling files and deletes those again — it opens them with `O_EXCL`, so it
@@ -265,10 +276,17 @@ git rebase v26.08.1 custom
 ./install-poweruse.sh
 ```
 
-The changes are kept as a thin patch on purpose. New code lives in
-`src/customactions.{h,cpp}`, `src/settings/customactions/`, `src/drives/` and
-`src/kioworkers/drives/`; upstream files only gain a call, a settings page
-registration, the `--drives` option and their entries in `CMakeLists.txt`.
+The changes are kept as a thin patch on purpose. New code lives in:
+
+| Path | What |
+|---|---|
+| `src/customactions.{h,cpp}`, `src/settings/customactions/` | the two context menu lists and their settings page |
+| `src/drives/` | the drive list widget, the format dialog and the free space job |
+| `src/kioworkers/drives/` | the `drives:/` KIO worker |
+| `src/copy/`, `src/settings/powercopy/` | the parallel copy job and its settings page |
+
+Upstream files only gain a call, a settings page registration, the `--drives`
+option and their entries in `CMakeLists.txt`.
 
 ## Caveats
 

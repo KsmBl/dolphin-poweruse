@@ -32,13 +32,22 @@ PowerCopySettingsPage::PowerCopySettingsPage(QWidget *parent)
 {
     m_enabled = new QCheckBox(i18nc("@option:check", "Copy several files at the same time"), this);
 
+    // The suffix has to follow the value, or a box showing 4 reads "4 file".
+    const auto keepSuffixInStep = [](QSpinBox *box) {
+        const auto update = [box](int value) {
+            box->setSuffix(i18ncp("@item:valuesuffix", " file", " files", value));
+        };
+        connect(box, &QSpinBox::valueChanged, box, update);
+        update(box->value());
+    };
+
     m_filesInFlight = new QSpinBox(this);
     m_filesInFlight->setRange(1, 64);
-    m_filesInFlight->setSuffix(i18ncp("@item:valuesuffix", " file", " files", m_filesInFlight->value()));
+    keepSuffixInStep(m_filesInFlight);
 
     m_minimumFiles = new QSpinBox(this);
     m_minimumFiles->setRange(2, 10000);
-    m_minimumFiles->setSuffix(i18ncp("@item:valuesuffix", " file", " files", m_minimumFiles->value()));
+    keepSuffixInStep(m_minimumFiles);
 
     auto *form = new QFormLayout();
     form->addRow(i18nc("@label", "Copying:"), m_enabled);
@@ -50,9 +59,9 @@ PowerCopySettingsPage::PowerCopySettingsPage(QWidget *parent)
     form->addRow(i18nc("@label:spinbox", "At the same time:"), m_filesInFlight);
     form->addRow(QString(),
                  hint(i18nc("@info",
-                            "More is not always better. On an ordinary disk the gain stops at about four, because that is as many "
-                            "helpers as the system runs; on an encrypted volume, where the work is done by the processor, eight is "
-                            "faster still. On a spinning disk, keep this at one."),
+                            "More is not always better. Nearly all of the gain is already there with two, and higher values "
+                            "measure the same; the disk is waiting on round trips rather than short of bandwidth. On a spinning "
+                            "disk, where seeking costs more than waiting, keep this at one."),
                       this));
     form->addRow(i18nc("@label:spinbox", "Only from:"), m_minimumFiles);
     form->addRow(QString(), hint(i18nc("@info", "Below this many files the ordinary way is used, since the preparation would cost more than it saves."), this));
