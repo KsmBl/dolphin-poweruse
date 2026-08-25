@@ -7,6 +7,8 @@
 
 #include "dolphinview.h"
 
+#include "copy/powercopyjob.h"
+
 #include "dolphin_detailsmodesettings.h"
 #include "dolphin_generalsettings.h"
 #include "dolphinitemlistview.h"
@@ -951,7 +953,21 @@ void DolphinView::copySelectedItems(const KFileItemList &selection, const QUrl &
     m_markFirstNewlySelectedItemAsCurrent = true;
     m_selectJobCreatedItems = true;
 
-    KIO::CopyJob *job = KIO::copy(selection.urlList(), destinationUrl, KIO::DefaultFlags);
+    const QList<QUrl> sourceUrls = selection.urlList();
+    if (PowerCopyJob::canAccelerate(sourceUrls, destinationUrl)) {
+        // Several files in flight instead of one after another; the job hands
+        // the whole operation back to KIO if it cannot do better.
+        PowerCopyJob *job = PowerCopyJob::copy(sourceUrls, destinationUrl);
+        KJobWidgets::setWindow(job, this);
+
+        connect(job, &PowerCopyJob::result, this, &DolphinView::slotJobResult);
+        connect(job, &PowerCopyJob::copying, this, &DolphinView::slotItemCreatedFromJob);
+        connect(job, &PowerCopyJob::copyingDone, this, &DolphinView::slotItemCreatedFromJob);
+        KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Copy, sourceUrls, destinationUrl, job);
+        return;
+    }
+
+    KIO::CopyJob *job = KIO::copy(sourceUrls, destinationUrl, KIO::DefaultFlags);
     KJobWidgets::setWindow(job, this);
 
     connect(job, &KIO::CopyJob::result, this, &DolphinView::slotJobResult);
@@ -973,7 +989,19 @@ void DolphinView::moveSelectedItems(const KFileItemList &selection, const QUrl &
     m_markFirstNewlySelectedItemAsCurrent = true;
     m_selectJobCreatedItems = true;
 
-    KIO::CopyJob *job = KIO::move(selection.urlList(), destinationUrl, KIO::DefaultFlags);
+    const QList<QUrl> sourceUrls = selection.urlList();
+    if (PowerCopyJob::canAccelerate(sourceUrls, destinationUrl)) {
+        PowerCopyJob *job = PowerCopyJob::move(sourceUrls, destinationUrl);
+        KJobWidgets::setWindow(job, this);
+
+        connect(job, &PowerCopyJob::result, this, &DolphinView::slotJobResult);
+        connect(job, &PowerCopyJob::moving, this, &DolphinView::slotItemCreatedFromJob);
+        connect(job, &PowerCopyJob::copyingDone, this, &DolphinView::slotItemCreatedFromJob);
+        KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Move, sourceUrls, destinationUrl, job);
+        return;
+    }
+
+    KIO::CopyJob *job = KIO::move(sourceUrls, destinationUrl, KIO::DefaultFlags);
     KJobWidgets::setWindow(job, this);
 
     connect(job, &KIO::CopyJob::result, this, &DolphinView::slotJobResult);

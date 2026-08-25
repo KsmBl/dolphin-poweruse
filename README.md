@@ -101,6 +101,56 @@ dolphin drives:/      # the same thing
 The listing is a KIO worker installed as `kf6/kio/kio_drives.so`, so `drives:/`
 also works in other KDE applications.
 
+### 3. Copying many small files, several at a time
+
+Dolphin copies through `KIO::CopyJob`, which is strictly serial: the next file
+starts only once the previous one has come back from the worker process. The
+per-file work is already about as good as it gets — reflink, `copy_file_range`,
+extended attributes, ACLs, timestamps, and a `.part` file so an interrupted copy
+cannot leave a truncated one — but with thousands of small files the disk spends
+most of its time waiting for the next round trip.
+
+This fork keeps several file operations in flight instead. Measured on an NVMe
+machine, 8 cores:
+
+| | 3000 × 4 KiB, ext4 | 2000 × 8 KiB, encrypted volume |
+|---|---|---|
+| Stock `KIO::CopyJob` | 382 ms | 275 ms |
+| 2 in flight | 153 ms | 82 ms |
+| 4 in flight | **91 ms** | 72 ms |
+| 8 in flight | 90 ms | **65 ms** |
+| 16 in flight | 90 ms | 70 ms |
+
+Roughly **four times faster** in both cases. Plain ext4 stops improving at 4,
+because KIO allows five worker processes for local files; an encrypted volume
+keeps gaining to 8, since the work there is CPU-bound on en/decryption. The
+default is 8, which costs nothing in the first case and helps in the second.
+
+Each file is still copied by KIO's own worker, so every property listed above is
+preserved exactly as before, and undo, progress and error reporting behave the
+same. The job steps aside and hands the whole operation to the ordinary
+`KIO::copy()` — before touching anything — when it cannot do better:
+
+* something already exists at the destination, so the usual overwrite, rename
+  and skip dialogs apply,
+* a source is a symlink or something other than a plain file or directory,
+* a source or the destination is not local (`sftp://`, `admin://`, archives…),
+* or there are fewer files than the threshold, where batching costs more than it
+  saves.
+
+Settings live in `dolphinrc`:
+
+```ini
+[PowerCopy]
+Enabled=true
+FilesInFlight=8
+MinimumFiles=8
+```
+
+Buffer sizes are deliberately not exposed: the measurements above show the win
+comes from concurrency, and for small files KIO uses `copy_file_range()`, which
+never allocates a user-space buffer at all.
+
 ---
 
 ## Install
