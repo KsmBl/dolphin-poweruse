@@ -11,10 +11,11 @@
     </entry>
     <entry name="FilesInFlight" type="Int">
       <label>How many file operations may be in flight at once</label>
-      <!-- Measured: on ext4 the gain flattens at 4 (the file worker's
-           maxInstances is 5); on an encrypted volume 8 is still better, since
-           the work is CPU-bound there. 8 costs nothing in the first case. -->
-      <default>8</default>
+      <!-- Measured on ext4 and on an encrypted volume: nearly all of the gain
+           is already there at 2, and 4, 8 and 16 land within noise of each
+           other. 4 sits comfortably past the knee without queueing more than
+           a slow or rotational device would like. -->
+      <default>4</default>
       <min>1</min>
       <max>64</max>
     </entry>

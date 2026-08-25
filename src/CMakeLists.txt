@@ -340,6 +340,7 @@ target_sources(dolphinstatic PRIVATE
     settings/dolphinsettingsdialog.cpp
     settings/contextmenu/contextmenusettingspage.cpp
     settings/customactions/customactionssettingspage.cpp
+    settings/powercopy/powercopysettingspage.cpp
     settings/customactions/customactiondialog.cpp
     customactions.cpp
     settings/settingspagebase.cpp

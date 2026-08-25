@@ -7,10 +7,13 @@
 #ifndef POWERCOPYJOB_H
 #define POWERCOPYJOB_H
 
+#include "dolphin_export.h"
+
 #include <KIO/Job>
 
 #include <QDateTime>
 #include <QList>
+#include <QStringList>
 #include <QUrl>
 
 /**
@@ -30,7 +33,7 @@
  * anything when it cannot do better: a destination that already exists, too few
  * files to be worth it, or sources that are not local.
  */
-class PowerCopyJob : public KIO::Job
+class DOLPHIN_EXPORT PowerCopyJob : public KIO::Job
 {
     Q_OBJECT
 
@@ -76,6 +79,9 @@ private:
 
     void dispatch();
     void startNextTask();
+
+    /*! After a move, the emptied source directories have to go as well. */
+    void removeMovedSourceDirectories();
     void slotResult(KJob *job) override;
 
     const Operation m_operation;
@@ -84,6 +90,8 @@ private:
 
     QList<Task> m_tasks;
     QList<QUrl> m_directories;
+    /*! Source directories walked for a move, to remove once their files left. */
+    QStringList m_sourceDirectories;
     int m_nextTask = 0;
     int m_running = 0;
     int m_inFlightLimit = 1;

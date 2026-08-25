@@ -110,21 +110,30 @@ extended attributes, ACLs, timestamps, and a `.part` file so an interrupted copy
 cannot leave a truncated one — but with thousands of small files the disk spends
 most of its time waiting for the next round trip.
 
-This fork keeps several file operations in flight instead. Measured on an NVMe
-machine, 8 cores:
+This fork keeps several file operations in flight instead. Measured here on an
+NVMe machine with 8 cores, copying into a fresh directory:
 
 | | 3000 × 4 KiB, ext4 | 2000 × 8 KiB, encrypted volume |
 |---|---|---|
-| Stock `KIO::CopyJob` | 382 ms | 275 ms |
-| 2 in flight | 153 ms | 82 ms |
-| 4 in flight | **91 ms** | 72 ms |
-| 8 in flight | 90 ms | **65 ms** |
-| 16 in flight | 90 ms | 70 ms |
+| Stock `KIO::CopyJob` | 566 ms / 734 ms | 524 ms |
+| 2 in flight | 277 ms / 222 ms | 177 ms |
+| 4 in flight | 267 ms / 235 ms | 173 ms |
+| 8 in flight | 279 ms / 231 ms | 167 ms |
+| 16 in flight | 247 ms / 222 ms | 170 ms |
 
-Roughly **four times faster** in both cases. Plain ext4 stops improving at 4,
-because KIO allows five worker processes for local files; an encrypted volume
-keeps gaining to 8, since the work there is CPU-bound on en/decryption. The
-default is 8, which costs nothing in the first case and helps in the second.
+Two runs are shown for ext4 to give an idea of the spread; the stock figure
+moves around more than the concurrent ones do. That is **roughly two and a half
+to three times faster**, and worth being precise about where it comes from:
+essentially all of the gain is already there with **2** operations in flight,
+and 4, 8 and 16 land within noise of each other. The device is not short of
+bandwidth for 4 KiB files — it is waiting on round trips, and two in flight is
+enough to keep it busy. The default is 4, comfortably past the knee without
+queueing more work than a slow or rotational disk would enjoy.
+
+What did **not** help, and was tried: reading batches of files into memory and
+writing them out afterwards. It doubles the memory traffic, removes the overlap
+between reading and writing, and for small files the copy never reaches
+user space to begin with.
 
 Each file is still copied by KIO's own worker, so every property listed above is
 preserved exactly as before, and undo, progress and error reporting behave the
@@ -138,18 +147,19 @@ same. The job steps aside and hands the whole operation to the ordinary
 * or there are fewer files than the threshold, where batching costs more than it
   saves.
 
-Settings live in `dolphinrc`:
+**Settings → Configure Dolphin… → Copying** turns it off or tunes it, and the
+same values live in `dolphinrc`:
 
 ```ini
 [PowerCopy]
 Enabled=true
-FilesInFlight=8
+FilesInFlight=4
 MinimumFiles=8
 ```
 
 Buffer sizes are deliberately not exposed: the measurements above show the win
 comes from concurrency, and for small files KIO uses `copy_file_range()`, which
-never allocates a user-space buffer at all.
+never allocates a user-space buffer at all — there is no buffer left to size.
 
 ---
 

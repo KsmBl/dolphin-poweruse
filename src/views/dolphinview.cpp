@@ -2657,7 +2657,31 @@ void DolphinView::applyDynamicView()
 
 void DolphinView::pasteToUrl(const QUrl &url)
 {
-    KIO::PasteJob *job = KIO::paste(QApplication::clipboard()->mimeData(), url);
+    const QMimeData *mimeData = QApplication::clipboard()->mimeData();
+
+    // KIO::paste also turns raw clipboard content (an image, some text) into a
+    // new file; only a plain list of copied files can take the concurrent path.
+    // A cut is left alone: it carries clipboard clearing and move semantics
+    // that are not worth reproducing, and a move within one filesystem is a
+    // rename anyway.
+    if (mimeData && mimeData->hasUrls() && !KIO::isClipboardDataCut(mimeData)) {
+        const QList<QUrl> sourceUrls = mimeData->urls();
+        if (PowerCopyJob::canAccelerate(sourceUrls, url)) {
+            PowerCopyJob *powerJob = PowerCopyJob::copy(sourceUrls, url);
+            KJobWidgets::setWindow(powerJob, this);
+            m_clearSelectionBeforeSelectingNewItems = true;
+            m_markFirstNewlySelectedItemAsCurrent = true;
+            m_selectJobCreatedItems = true;
+
+            connect(powerJob, &PowerCopyJob::copying, this, &DolphinView::slotItemCreatedFromJob);
+            connect(powerJob, &PowerCopyJob::copyingDone, this, &DolphinView::slotItemCreatedFromJob);
+            connect(powerJob, &PowerCopyJob::result, this, &DolphinView::slotJobResult);
+            KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Copy, sourceUrls, url, powerJob);
+            return;
+        }
+    }
+
+    KIO::PasteJob *job = KIO::paste(mimeData, url);
     KJobWidgets::setWindow(job, this);
     m_clearSelectionBeforeSelectingNewItems = true;
     m_markFirstNewlySelectedItemAsCurrent = true;

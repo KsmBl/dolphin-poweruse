@@ -96,6 +96,7 @@ bool PowerCopyJob::buildPlan()
 
         if (sourceInfo.isDir()) {
             m_directories.append(QUrl::fromLocalFile(target));
+            m_sourceDirectories.append(sourcePath);
 
             QDirIterator iterator(sourcePath, QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
             while (iterator.hasNext()) {
@@ -109,6 +110,7 @@ bool PowerCopyJob::buildPlan()
                 }
                 if (entryInfo.isDir()) {
                     m_directories.append(QUrl::fromLocalFile(entryTarget));
+                    m_sourceDirectories.append(entry);
                 } else {
                     m_tasks.append({QUrl::fromLocalFile(entry), QUrl::fromLocalFile(entryTarget)});
                     m_totalBytes += entryInfo.size();
@@ -183,10 +185,27 @@ void PowerCopyJob::dispatch()
     }
 }
 
+void PowerCopyJob::removeMovedSourceDirectories()
+{
+    // Children before parents, so each one is empty by the time it is removed.
+    std::sort(m_sourceDirectories.begin(), m_sourceDirectories.end(), [](const QString &left, const QString &right) {
+        return left.length() > right.length();
+    });
+
+    for (const QString &directory : std::as_const(m_sourceDirectories)) {
+        // rmdir, not a recursive delete: if anything unexpected is still in
+        // there it stays, rather than being thrown away silently.
+        QDir().rmdir(directory);
+    }
+}
+
 void PowerCopyJob::startNextTask()
 {
     if (m_failed || m_nextTask >= m_tasks.count()) {
         if (m_running == 0 && !m_failed) {
+            if (m_operation == MoveOperation) {
+                removeMovedSourceDirectories();
+            }
             emitResult();
         }
         return;

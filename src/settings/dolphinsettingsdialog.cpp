@@ -12,6 +12,7 @@
 #include "dolphin_generalsettings.h"
 #include "dolphinmainwindow.h"
 #include "interface/interfacesettingspage.h"
+#include "powercopy/powercopysettingspage.h"
 #include "trash/trashsettingspage.h"
 #include "viewmodes/viewsettingspage.h"
 #if HAVE_KUSERFEEDBACK
@@ -78,6 +79,13 @@ DolphinSettingsDialog::DolphinSettingsDialog(const QUrl &url, QWidget *parent, K
     customActionsFrame->setIcon(QIcon::fromTheme(QStringLiteral("list-add")));
     m_pages.append(customActionsSettingsPage);
     connect(customActionsSettingsPage, &CustomActionsSettingsPage::changed, this, &DolphinSettingsDialog::enableApply);
+
+    // Copying
+    auto powerCopySettingsPage = new PowerCopySettingsPage(this);
+    KPageWidgetItem *powerCopyFrame = addPage(powerCopySettingsPage, i18nc("@title:group", "Copying"));
+    powerCopyFrame->setIcon(QIcon::fromTheme(QStringLiteral("edit-copy")));
+    m_pages.append(powerCopySettingsPage);
+    connect(powerCopySettingsPage, &PowerCopySettingsPage::changed, this, &DolphinSettingsDialog::enableApply);
 
     // Trash
     SettingsPageBase *trashSettingsPage = nullptr;
