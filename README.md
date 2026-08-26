@@ -11,6 +11,8 @@ manager, with a handful of additions for people who live in their file manager:
   by keeping several operations in flight instead of one at a time
 * **[Formatting and free space wiping](#4-formatting-a-drive-and-overwriting-free-space)**
   from the drive list and the Places panel
+* **[Folders that merge instead of asking](#5-folders-of-the-same-name-are-merged)**,
+  the way Windows Explorer does it
 
 ![The drives view](screenshots/drives.png)
 
@@ -155,8 +157,8 @@ preserved exactly as before, and undo, progress and error reporting behave the
 same. The job steps aside and hands the whole operation to the ordinary
 `KIO::copy()` — before touching anything — when it cannot do better:
 
-* something already exists at the destination, so the usual overwrite, rename
-  and skip dialogs apply,
+* a *file* already exists at the destination, so the usual overwrite, rename and
+  skip dialogs apply (a *folder* of the same name is merged, see below),
 * a source is a symlink or something other than a plain file or directory,
 * a source or the destination is not local (`sftp://`, `admin://`, archives…),
 * or there are fewer files than the threshold, where batching costs more than it
@@ -232,6 +234,36 @@ It also only overwrites whole free blocks. What is left inside the last, partly
 used block of a file that is still there, and deleted file *names* still sitting
 in directory blocks, are not reachable this way.
 
+---
+
+### 5. Folders of the same name are merged
+
+Copy a folder `X` into somewhere that already holds a folder `X`, and Dolphin
+stops to ask what should happen to it, offering *Write Into* among rename, skip
+and cancel. Windows Explorer does not ask: the two folders become one holding
+both sides, and only the files inside that genuinely clash are worth a question.
+
+This fork behaves the way Explorer does. A folder meeting a folder of the same
+name is written into, without a dialog, at every depth:
+
+```
+dropped:      X/  a.txt  b.txt  sub/deep.txt
+already here: X/  b.txt  c.txt  sub/other.txt
+
+result:       X/  a.txt  b.txt  c.txt  sub/deep.txt  sub/other.txt
+                         ^ only this one is asked about
+```
+
+**Files are never overwritten silently.** `b.txt` above still brings up KIO's
+usual dialog — overwrite, overwrite all, rename, skip, skip all, cancel — with
+the two sizes and dates to compare. Nothing else changes either: a folder
+landing on a *file* of the same name, or a file landing on a folder, is left to
+KIO exactly as before.
+
+It applies to copying, moving, pasting and dropping, in the view, the Folders
+panel and the Places panel, on the concurrent path from the previous section as
+well as on KIO's own.
+
 ## Install
 
 ```sh
@@ -287,7 +319,8 @@ The changes are kept as a thin patch on purpose. New code lives in:
 | `src/customactions.{h,cpp}`, `src/settings/customactions/` | the two context menu lists and their settings page |
 | `src/drives/` | the drive list widget, the format dialog and the free space job |
 | `src/kioworkers/drives/` | the `drives:/` KIO worker |
-| `src/copy/`, `src/settings/powercopy/` | the parallel copy job and its settings page |
+| `src/copy/powercopyjob.{h,cpp}`, `src/settings/powercopy/` | the parallel copy job and its settings page |
+| `src/copy/foldermerge.{h,cpp}` | writing into folders of the same name instead of asking |
 
 Upstream files only gain a call, a settings page registration, the `--drives`
 option and their entries in `CMakeLists.txt`.

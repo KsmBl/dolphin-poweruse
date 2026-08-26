@@ -7,6 +7,7 @@
 
 #include "dolphinview.h"
 
+#include "copy/foldermerge.h"
 #include "copy/powercopyjob.h"
 
 #include "dolphin_detailsmodesettings.h"
@@ -969,6 +970,7 @@ void DolphinView::copySelectedItems(const KFileItemList &selection, const QUrl &
 
     KIO::CopyJob *job = KIO::copy(sourceUrls, destinationUrl, KIO::DefaultFlags);
     KJobWidgets::setWindow(job, this);
+    FolderMerge::enableFor(job);
 
     connect(job, &KIO::CopyJob::result, this, &DolphinView::slotJobResult);
     connect(job, &KIO::CopyJob::copying, this, &DolphinView::slotItemCreatedFromJob);
@@ -1003,6 +1005,7 @@ void DolphinView::moveSelectedItems(const KFileItemList &selection, const QUrl &
 
     KIO::CopyJob *job = KIO::move(sourceUrls, destinationUrl, KIO::DefaultFlags);
     KJobWidgets::setWindow(job, this);
+    FolderMerge::enableFor(job);
 
     connect(job, &KIO::CopyJob::result, this, &DolphinView::slotJobResult);
     connect(job, &KIO::CopyJob::moving, this, &DolphinView::slotItemCreatedFromJob);
@@ -2683,6 +2686,7 @@ void DolphinView::pasteToUrl(const QUrl &url)
 
     KIO::PasteJob *job = KIO::paste(mimeData, url);
     KJobWidgets::setWindow(job, this);
+    FolderMerge::enableForCopiesOf(job);
     m_clearSelectionBeforeSelectingNewItems = true;
     m_markFirstNewlySelectedItemAsCurrent = true;
     m_selectJobCreatedItems = true;
